@@ -25,6 +25,7 @@ from transformer_lens.pretrained.weight_conversions import (
     convert_bert_weights,
     convert_bloom_weights,
     convert_coder_weights,
+    convert_deepseek_weights,
     convert_gemma_weights,
     convert_gpt2_weights,
     convert_gptj_weights,
@@ -250,6 +251,7 @@ OFFICIAL_MODEL_NAMES = [
     "google-t5/t5-base",
     "google-t5/t5-large",
     "ai-forever/mGPT",
+    "deepseek-ai/DeepSeek-V2-Lite"
 ]
 """Official model names for models on HuggingFace."""
 
@@ -1464,6 +1466,37 @@ def convert_hf_model_config(model_name: str, **kwargs):
             "final_rms": True,
             "use_normalization_before_and_after": True,
         }
+    elif official_model_name.startswith("deepseek-ai/DeepSeek-V2-Lite"):
+        print(hf_config)
+        print("------") # first layer is not MoE, but them after are.
+         cfg_dict = {
+            "d_model": 2048,
+            "d_head": 128,
+            "n_heads": 16,
+            "d_mlp": 2048,
+            "n_layers": 27,
+            "n_ctx": 16384, # not quite sure on this tbh.
+            "eps": 1e-5,
+            "d_vocab": 102400, # Done
+            "act_fn": "silu",
+            "n_key_value_heads": 8,
+            "normalization_type": "RMS",
+            "positional_embedding_type": "rotary",
+            "rotary_adjacent_pairs": False,
+            "rotary_dim": 32,
+            "final_rms": True,
+            "gated_mlp": True,
+            "rotary_base": 10000.0,
+            "use_NTK_by_parts_rope": True,
+            "NTK_by_parts_low_freq_factor": 1.0,
+            "NTK_by_parts_high_freq_factor": 4.0,
+            "NTK_by_parts_factor": 8.0,
+            "num_experts":c 64, 
+            "num_shared_experts": 2,
+            "num_experts_per_tok": 6,
+            "gated_mlp": True,
+            "eps": 1e-06,
+        }
     elif architecture == "T5ForConditionalGeneration":
         cfg_dict = {
             "d_model": hf_config.d_model,
@@ -1882,6 +1915,8 @@ def get_pretrained_state_dict(
             state_dict = convert_gemma_weights(hf_model, cfg)
         elif cfg.original_architecture == "Gemma2ForCausalLM":
             state_dict = convert_gemma_weights(hf_model, cfg)
+        elif cfg.original_architecture == "DeepseekV2ForCausalLM":
+            state_dict = convert_deepseek_weights(hf_model, cfg)
         else:
             raise ValueError(
                 f"Loading weights from the architecture is not currently supported: {cfg.original_architecture}, generated from model name {cfg.model_name}. Feel free to open an issue on GitHub to request this feature."
